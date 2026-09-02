@@ -11,15 +11,15 @@ jobs:
   build:
     strategy:
       matrix:
-        elixir: ["1.20.1"]
-        otp: ["29.0"]
+        elixir: ["1.20.3"]
+        otp: ["29.0.5"]
 
     name: Build and test
     runs-on: ubuntu-latest
 
     steps:
       - name: "Checkout code"
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
@@ -29,7 +29,7 @@ jobs:
 
       - name: Restore deps and _build cache
         id: mix-deps
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             deps
@@ -44,7 +44,7 @@ jobs:
           mix deps.compile
 
       - name: PLT Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: plt-cache
         with:
           key: ${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-plts-${{ hashFiles('**/mix.lock') }}
