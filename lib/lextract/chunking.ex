@@ -17,7 +17,7 @@ defmodule LeXtract.Chunking do
   ## Options
 
   * `:max_char_buffer` - Maximum chunk size in characters (default: 1000)
-  * `:chunk_overlap` - Overlap between chunks in characters (default: 200)
+  * `:chunk_overlap` - Overlap between chunks in characters (default: 20% of `:max_char_buffer`)
   * `:tokenizer` - Custom tokenizer instance (default: uses `LeXtract.Tokenizer.default_tokenizer/0`)
 
   ## Examples
@@ -43,7 +43,6 @@ defmodule LeXtract.Chunking do
   alias LeXtract.{CharInterval, Document, TextChunk, TokenInterval, Tokenizer}
 
   @default_max_char_buffer 1000
-  @default_chunk_overlap 200
 
   @doc """
   Chunks a document using semantic splitting and tokenization.
@@ -57,7 +56,7 @@ defmodule LeXtract.Chunking do
   ## Options
 
   * `:max_char_buffer` - Maximum chunk size in characters (default: #{@default_max_char_buffer})
-  * `:chunk_overlap` - Overlap between chunks in characters (default: #{@default_chunk_overlap})
+  * `:chunk_overlap` - Overlap between chunks in characters (default: 20% of `:max_char_buffer`)
   * `:tokenizer` - Custom tokenizer instance (default: uses `LeXtract.Tokenizer.default_tokenizer/0`)
 
   ## Examples
@@ -79,15 +78,9 @@ defmodule LeXtract.Chunking do
   """
   @spec chunk_document(Document.t(), keyword()) :: [TextChunk.t()]
   def chunk_document(%Document{text: text} = document, opts \\ []) do
-    max_char_buffer = Keyword.get(opts, :max_char_buffer, @default_max_char_buffer)
-    chunk_overlap = Keyword.get(opts, :chunk_overlap, @default_chunk_overlap)
-
     case get_tokenizer(opts) do
       {:ok, tokenizer} ->
-        chunk_with_tokenizer(text, tokenizer, document,
-          max_char_buffer: max_char_buffer,
-          chunk_overlap: chunk_overlap
-        )
+        chunk_with_tokenizer(text, tokenizer, document, opts)
 
       {:error, %LeXtract.Error.External.TokenizerLoad{} = error} ->
         raise error
@@ -110,7 +103,7 @@ defmodule LeXtract.Chunking do
   ## Options
 
   * `:max_char_buffer` - Maximum chunk size in characters (default: #{@default_max_char_buffer})
-  * `:chunk_overlap` - Overlap between chunks in characters (default: #{@default_chunk_overlap})
+  * `:chunk_overlap` - Overlap between chunks in characters (default: 20% of `:max_char_buffer`)
 
   ## Examples
 
@@ -133,7 +126,7 @@ defmodule LeXtract.Chunking do
 
   def chunk_with_tokenizer(text, tokenizer, document, opts) when is_binary(text) do
     max_char_buffer = Keyword.get(opts, :max_char_buffer, @default_max_char_buffer)
-    chunk_overlap = Keyword.get(opts, :chunk_overlap, @default_chunk_overlap)
+    chunk_overlap = Keyword.get(opts, :chunk_overlap, calculate_overlap(max_char_buffer))
 
     text_chunks =
       TextChunker.split(text,

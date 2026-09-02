@@ -50,8 +50,7 @@ defmodule LeXtract.Config do
                     ],
                     chunk_overlap: [
                       type: :non_neg_integer,
-                      default: 200,
-                      doc: "Character overlap between chunks"
+                      doc: "Character overlap between chunks (default: 20% of max_char_buffer)"
                     ],
                     batch_size: [
                       type: :pos_integer,
@@ -141,7 +140,11 @@ defmodule LeXtract.Config do
   """
   @spec new(keyword()) :: t()
   def new(opts \\ []) do
-    validated_opts = NimbleOptions.validate!(opts, @options_schema)
+    validated_opts =
+      opts
+      |> NimbleOptions.validate!(@options_schema)
+      |> put_default_chunk_overlap()
+
     struct!(__MODULE__, validated_opts)
   end
 
@@ -208,7 +211,9 @@ defmodule LeXtract.Config do
   def validate(opts) when is_list(opts) do
     case NimbleOptions.validate(opts, @options_schema) do
       {:ok, validated_opts} ->
-        validate_template_options(validated_opts)
+        validated_opts
+        |> put_default_chunk_overlap()
+        |> validate_template_options()
 
       {:error, %NimbleOptions.ValidationError{} = error} ->
         {:error, LeXtract.Error.Invalid.Config.exception(errors: Exception.message(error))}
@@ -223,6 +228,14 @@ defmodule LeXtract.Config do
       |> Enum.into([])
 
     validate(opts)
+  end
+
+  defp put_default_chunk_overlap(opts) do
+    Keyword.put_new(
+      opts,
+      :chunk_overlap,
+      LeXtract.Chunking.calculate_overlap(Keyword.fetch!(opts, :max_char_buffer))
+    )
   end
 
   defp validate_template_options(opts) do

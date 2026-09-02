@@ -252,7 +252,7 @@ defmodule LeXtract.Annotator do
     * `:batch_size` - Number of chunks per LLM batch (default: 5)
     * `:extraction_passes` - Number of passes for multi-pass (default: 1)
     * `:show_progress` - Show progress bar (default: false)
-    * `:chunk_overlap` - Chunk overlap in chars (default: 200)
+    * `:chunk_overlap` - Chunk overlap in chars (default: 20% of `:max_char_buffer`)
 
   ## Returns
 
@@ -271,15 +271,12 @@ defmodule LeXtract.Annotator do
   end
 
   defp annotate_documents_single_pass(annotator, documents, opts) do
-    max_char_buffer = Keyword.get(opts, :max_char_buffer, 1000)
     batch_size = Keyword.get(opts, :batch_size, 5)
+    chunk_opts = Keyword.take(opts, [:max_char_buffer, :chunk_overlap])
 
     documents
     |> Stream.flat_map(fn doc ->
-      Chunking.chunk_document(doc,
-        max_char_buffer: max_char_buffer,
-        chunk_overlap: Keyword.get(opts, :chunk_overlap, 200)
-      )
+      Chunking.chunk_document(doc, chunk_opts)
     end)
     |> Stream.chunk_every(batch_size)
     |> Stream.flat_map(fn batch ->
